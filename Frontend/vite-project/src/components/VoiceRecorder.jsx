@@ -111,7 +111,14 @@ const VoiceRecorder = ({ onVoiceModelCreated, voiceModels }) => {
       }
       
       const formData = new FormData();
+      // Make sure to use the exact field name expected by the backend
       formData.append('audio', audioBlob, 'voice_sample.wav');
+      
+      // Add optional metadata
+      formData.append('name', `Voice Model ${new Date().toLocaleDateString()}`);
+      formData.append('description', 'Created with VocalSaaS');
+      
+      console.log('Uploading voice sample...');
       
       const response = await fetch('http://localhost:5000/api/voice/upload', {
         method: 'POST',
