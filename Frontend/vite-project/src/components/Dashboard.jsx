@@ -1,37 +1,90 @@
-import React, { useEffect, useState } from 'react';
-import styled from 'styled-components';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import VoiceRecorder from './VoiceRecorder';
+import AudioPlayer from './AudioPlayer';
+import JournalEntry from './JournalEntry';
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('voice');
+  const [voiceModels, setVoiceModels] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [journalEntries, setJournalEntries] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // Get current user session
-    const getUser = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-      } catch (error) {
-        console.error('Error getting user:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     getUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') {
-        setUser(session?.user);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    fetchVoiceModels();
+    fetchSessions();
+    fetchJournalEntries();
   }, []);
+
+  const getUser = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    } catch (error) {
+      console.error('Error getting user:', error);
+    }
+  };
+
+  const fetchVoiceModels = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const response = await fetch('http://localhost:5000/api/voice/models', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+        const result = await response.json();
+        if (result.success) {
+          setVoiceModels(result.voiceModels);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching voice models:', error);
+    }
+  };
+
+  const fetchSessions = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const response = await fetch('http://localhost:5000/api/sessions', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+        const result = await response.json();
+        if (result.success) {
+          setSessions(result.sessions);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
+    }
+  };
+
+  const fetchJournalEntries = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const response = await fetch('http://localhost:5000/api/journal/entries', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+        const result = await response.json();
+        if (result.success) {
+          setJournalEntries(result.journalEntries);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching journal entries:', error);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -41,218 +94,113 @@ const Dashboard = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <StyledWrapper>
-        <div className="dashboard-container">
-          <div className="loading">Loading...</div>
-        </div>
-      </StyledWrapper>
-    );
-  }
+  const handleVoiceModelCreated = (newVoiceModel) => {
+    setVoiceModels(prev => [...prev, newVoiceModel]);
+  };
+
+  const handleSessionCreated = (newSession) => {
+    setSessions(prev => [...prev, newSession]);
+  };
+
+  const handleJournalEntryCreated = (newEntry) => {
+    setJournalEntries(prev => [newEntry, ...prev]);
+  };
 
   if (!user) {
     return (
-      <StyledWrapper>
-        <div className="dashboard-container">
-          <div className="error">Please sign in to access the dashboard.</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
         </div>
-      </StyledWrapper>
+      </div>
     );
   }
 
   return (
-    <StyledWrapper>
-      <div className="dashboard-container">
-        <header className="dashboard-header">
-          <h1>Welcome to Your Dashboard!</h1>
-          <button onClick={handleSignOut} className="signout-btn">
-            Sign Out
-          </button>
-        </header>
-        
-        <div className="dashboard-content">
-          <div className="welcome-card">
-            <h2>Hello, {user.user_metadata?.full_name || user.email}!</h2>
-            <p>You have successfully signed in to your account.</p>
-            <div className="user-info">
-              <p><strong>Email:</strong> {user.email}</p>
-              <p><strong>User ID:</strong> {user.id}</p>
-              <p><strong>Last Sign In:</strong> {new Date(user.last_sign_in_at).toLocaleString()}</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <h1 className="text-2xl font-bold text-gray-900">VocalSaaS</h1>
             </div>
-          </div>
-          
-          <div className="dashboard-stats">
-            <div className="stat-card">
-              <h3>Account Status</h3>
-              <p className="status-active">Active</p>
-            </div>
-            <div className="stat-card">
-              <h3>Email Verified</h3>
-              <p className={user.email_confirmed_at ? 'status-verified' : 'status-pending'}>
-                {user.email_confirmed_at ? 'Yes' : 'Pending'}
-              </p>
+            <div className="flex items-center space-x-4">
+              <span className="text-gray-700">{user.email}</span>
+              <button
+                onClick={handleSignOut}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Sign Out
+              </button>
             </div>
           </div>
         </div>
-      </div>
-    </StyledWrapper>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200 mb-8">
+          <nav className="-mb-px flex space-x-8">
+            {[
+              { id: 'voice', name: 'Voice Recording', icon: '🎤' },
+              { id: 'sessions', name: 'Audio Sessions', icon: '🎧' },
+              { id: 'journal', name: 'Journal', icon: '📝' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <span className="mr-2">{tab.icon}</span>
+                {tab.name}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        <div className="space-y-8">
+          {activeTab === 'voice' && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Voice Recording & Model Creation</h2>
+              <VoiceRecorder 
+                onVoiceModelCreated={handleVoiceModelCreated}
+                voiceModels={voiceModels}
+              />
+            </div>
+          )}
+
+          {activeTab === 'sessions' && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Audio Sessions</h2>
+              <AudioPlayer 
+                voiceModels={voiceModels}
+                sessions={sessions}
+                onSessionCreated={handleSessionCreated}
+              />
+            </div>
+          )}
+
+          {activeTab === 'journal' && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Journal Entries</h2>
+              <JournalEntry 
+                journalEntries={journalEntries}
+                onJournalEntryCreated={handleJournalEntryCreated}
+              />
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
   );
 };
-
-const StyledWrapper = styled.div`
-  .dashboard-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-    min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  }
-
-  .dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 20px 30px;
-    border-radius: 16px;
-    margin-bottom: 30px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(10px);
-  }
-
-  .dashboard-header h1 {
-    margin: 0;
-    color: #333;
-    font-size: 2rem;
-    font-weight: 700;
-  }
-
-  .signout-btn {
-    background: #ff4757;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-  }
-
-  .signout-btn:hover {
-    background: #ff3742;
-    transform: translateY(-2px);
-  }
-
-  .dashboard-content {
-    display: grid;
-    gap: 30px;
-  }
-
-  .welcome-card {
-    background: rgba(255, 255, 255, 0.95);
-    padding: 40px;
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(10px);
-    text-align: center;
-  }
-
-  .welcome-card h2 {
-    color: #333;
-    font-size: 2.5rem;
-    margin-bottom: 20px;
-    font-weight: 700;
-  }
-
-  .welcome-card p {
-    color: #666;
-    font-size: 1.2rem;
-    margin-bottom: 30px;
-  }
-
-  .user-info {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 12px;
-    text-align: left;
-    max-width: 500px;
-    margin: 0 auto;
-  }
-
-  .user-info p {
-    margin: 10px 0;
-    color: #555;
-    font-size: 1rem;
-  }
-
-  .dashboard-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-  }
-
-  .stat-card {
-    background: rgba(255, 255, 255, 0.95);
-    padding: 30px;
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(10px);
-    text-align: center;
-  }
-
-  .stat-card h3 {
-    color: #333;
-    font-size: 1.5rem;
-    margin-bottom: 15px;
-    font-weight: 600;
-  }
-
-  .status-active, .status-verified {
-    color: #2ed573;
-    font-weight: 700;
-    font-size: 1.2rem;
-  }
-
-  .status-pending {
-    color: #ffa502;
-    font-weight: 700;
-    font-size: 1.2rem;
-  }
-
-  .loading, .error {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    font-size: 1.5rem;
-    color: white;
-  }
-
-  .error {
-    color: #ff4757;
-  }
-
-  @media (max-width: 768px) {
-    .dashboard-header {
-      flex-direction: column;
-      gap: 20px;
-      text-align: center;
-    }
-
-    .dashboard-header h1 {
-      font-size: 1.5rem;
-    }
-
-    .welcome-card h2 {
-      font-size: 2rem;
-    }
-
-    .welcome-card {
-      padding: 30px 20px;
-    }
-  }
-`;
 
 export default Dashboard;
