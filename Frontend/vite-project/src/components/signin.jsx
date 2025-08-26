@@ -60,7 +60,7 @@ const SignInForm = ({ onToggleForm }) => {
               <div>
                 <input 
                   type="email" 
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-black"
                   placeholder="Email"
                   name="email"
                   value={formData.email}
@@ -71,7 +71,7 @@ const SignInForm = ({ onToggleForm }) => {
               <div>
                 <input 
                   type="password" 
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-black"
                   placeholder="Password"
                   name="password"
                   value={formData.password}
