@@ -57,63 +57,80 @@ Additionally, the app includes:
 
 ## 🛠 Tech Stack & Tools
 
-### Frontend (App)
+### Frontend (Next.js)
 
-* **Framework**: React Native (cross-platform mobile) or Flutter.
-* **Audio Recording & Playback**:
+* **Framework**: Next.js (React, SSR/SSG, API routes optional for client helpers)
+* **Audio Recording & Playback**: Web Audio APIs, `recordrtc`, `media-recorder`, `howler`
+* **UI**: Tailwind CSS
 
-  * React Native: `expo-av`, `react-native-audio`.
-  * Flutter: `flutter_sound`, `just_audio`.
-* **UI Components**: Tailwind CSS for RN (`nativewind`) or Flutter widgets.
+### Backend (FastAPI)
 
-### Backend / APIs
+* **Framework**: FastAPI (Python), served by Uvicorn/Gunicorn
+* **Voice Synthesis**: `requests` to [ElevenLabs API](https://api.elevenlabs.io)
+* **Data & Storage**: [Firebase](https://firebase.google.com/) (optional with Python Admin SDK) or direct cloud storage
 
-* **Voice Synthesis**: [ElevenLabs API](https://api.elevenlabs.io) for custom TTS.
-* **Data & Storage**: [Firebase](https://firebase.google.com/)
-
-  * **Firestore** → journaling entries, session metadata.
-  * **Storage** → raw recordings, generated audio.
-  * **Auth** → email/password, Google login, etc.
-* **Hosting** (optional): Firebase Hosting for serving lightweight APIs or docs.
+  * **Firestore** → journaling entries, session metadata
+  * **Storage** → raw recordings, generated audio
+  * **Auth** → Firebase Auth (ID tokens verified server-side)
 
 ### Security
 
-* **Encryption in transit**: HTTPS/TLS.
-* **Encryption at rest**: Firebase-managed encryption.
-* **Authentication**: Firebase Auth.
+* **Encryption in transit**: HTTPS/TLS
+* **Encryption at rest**: Firebase-managed encryption (if used)
+* **Authentication**: Firebase Auth on the client; server verifies tokens
 * **Environment Variables**:
 
+  Frontend (Next.js):
+
+  * `NEXT_PUBLIC_FIREBASE_API_KEY`
+  * `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+  * `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+  * `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+  * `NEXT_PUBLIC_FIREBASE_APP_ID`
+
+  Backend (FastAPI):
+
   * `ELEVENLABS_API_KEY`
-  * `FIREBASE_API_KEY`
-  * `FIREBASE_AUTH_DOMAIN`
   * `FIREBASE_PROJECT_ID`
-  * `FIREBASE_STORAGE_BUCKET`
-  * `FIREBASE_APP_ID`
+  * `GOOGLE_APPLICATION_CREDENTIALS` (path to service account JSON if using Admin SDK)
 
 ---
 
 ## 📂 Project Structure (Prototype)
 
 ```
-/app
-  /screens
-    Onboarding.js
-    VoiceRecording.js
-    SessionLibrary.js
-    Journal.js
-    Player.js
+/frontend                # Next.js app
+  /app or /pages         # route handlers (depending on Next.js version)
   /components
-    AudioPlayer.js
-    ScriptInput.js
-    JournalEntry.js
-  /services
-    elevenlabs.js   # Voice cloning & synthesis API
-    firebase.js     # Firebase Firestore, Auth, Storage setup
-  /utils
-    security.js     # encryption helpers
+    AudioPlayer.tsx
+    ScriptInput.tsx
+    JournalEntry.tsx
+  /lib
+    firebase.ts          # Firebase web SDK init
+  /styles
+  next.config.js
+  package.json
+
+/backend                 # FastAPI app
+  app/
+    main.py              # FastAPI entrypoint
+    api/
+      tts.py             # ElevenLabs proxy endpoints
+      journal.py         # CRUD for journal entries
+      sessions.py        # create/list personalized sessions
+      auth.py            # auth helpers (token verification)
+    services/
+      elevenlabs.py
+      firestore.py       # optional: Firestore helpers
+      storage.py         # optional: Storage helpers
+    models/
+      schemas.py         # Pydantic models
+  requirements.txt
+  uvicorn.sh (optional)
+
 /docs
-  DEPLOYMENT.md     # setup, env vars, hosting
-  API.md            # ElevenLabs & Firebase API integration
+  DEPLOYMENT.md          # setup, env vars, hosting
+  API.md                 # ElevenLabs & Firebase API integration
 ```
 
 ---
@@ -129,31 +146,58 @@ cd voice-journal-prototype
 
 ### 2. Install Dependencies
 
-React Native example:
+Frontend (Next.js):
 
 ```bash
+cd frontend
 npm install
-npx pod-install
+```
+
+Backend (FastAPI):
+
+```bash
+cd backend
+python -m venv .venv
+. .venv/bin/activate  # Windows PowerShell: .venv\\Scripts\\Activate.ps1
+pip install -r requirements.txt
 ```
 
 ### 3. Configure Environment Variables
 
-Create `.env` file:
+Frontend (create `frontend/.env.local`):
+
+```
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+Backend (create `backend/.env` or set system vars):
 
 ```
 ELEVENLABS_API_KEY=your_api_key_here
-FIREBASE_API_KEY=your_firebase_api_key
-FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 FIREBASE_PROJECT_ID=your_project_id
-FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-FIREBASE_APP_ID=your_firebase_app_id
+GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json
 ```
 
 ### 4. Run App (Dev Mode)
 
+Run backend first:
+
 ```bash
-npx react-native run-android
-npx react-native run-ios
+cd backend
+. .venv/bin/activate  # Windows PowerShell: .venv\\Scripts\\Activate.ps1
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Then run frontend in another terminal:
+
+```bash
+cd frontend
+npm run dev
 ```
 
 ### 5. Deploy Firebase
@@ -172,6 +216,6 @@ npx react-native run-ios
 
 ---
 
-✅ Now this README is fully Firebase-ready.
+✅ Now this README is aligned to a **Next.js frontend + FastAPI backend** architecture with Firebase as an optional data layer.
 
-Do you want me to also **draft the Firestore & Storage security rules** for journaling + audio (so users only access their own data)?
+Do you want me to also **draft the FastAPI routes and stub the Next.js pages**, and/or the **Firestore & Storage security rules** so users only access their own data?
