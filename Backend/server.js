@@ -4,6 +4,7 @@ const multer = require('multer');
 const axios = require('axios');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const FormData = require('form-data');
 require('dotenv').config();
 
 const app = express();
@@ -45,11 +46,15 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Access token required' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
+  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, decoded) => {
     if (err) {
       return res.status(403).json({ error: 'Invalid or expired token' });
     }
-    req.user = user;
+    // Ensure user has proper structure
+    req.user = {
+      id: decoded.id || decoded.userId || decoded.sub,
+      ...decoded
+    };
     next();
   });
 };
@@ -68,13 +73,13 @@ app.post('/api/voice/upload', authenticateToken, upload.single('audio'), async (
       return res.status(400).json({ error: 'No audio file provided' });
     }
 
-    const { userId } = req.user;
+    const userId = req.user.id;
     const audioBuffer = req.file.buffer;
     const fileName = `${userId}_${Date.now()}.wav`;
 
     // Upload to ElevenLabs for voice cloning
     const formData = new FormData();
-    formData.append('files', new Blob([audioBuffer]), fileName);
+    formData.append('files', audioBuffer, fileName);
     formData.append('name', `voice_${userId}`);
     formData.append('description', `Voice model for user ${userId}`);
 
@@ -122,7 +127,7 @@ app.post('/api/voice/upload', authenticateToken, upload.single('audio'), async (
 app.post('/api/voice/generate', authenticateToken, async (req, res) => {
   try {
     const { script, voiceId, sessionType } = req.body;
-    const { userId } = req.user;
+    const userId = req.user.id;
 
     if (!script || !voiceId) {
       return res.status(400).json({ error: 'Script and voice ID are required' });
@@ -179,7 +184,7 @@ app.post('/api/voice/generate', authenticateToken, async (req, res) => {
 // Get user's voice models
 app.get('/api/voice/models', authenticateToken, async (req, res) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user.id;
 
     // Here you would fetch from your database
     // For now, return mock data
@@ -212,7 +217,7 @@ app.get('/api/voice/models', authenticateToken, async (req, res) => {
 app.post('/api/journal/entry', authenticateToken, async (req, res) => {
   try {
     const { content, type, sessionId } = req.body;
-    const { userId } = req.user;
+    const userId = req.user.id;
 
     if (!content) {
       return res.status(400).json({ error: 'Journal content is required' });
@@ -244,7 +249,7 @@ app.post('/api/journal/entry', authenticateToken, async (req, res) => {
 
 app.get('/api/journal/entries', authenticateToken, async (req, res) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user.id;
     const { page = 1, limit = 10 } = req.query;
 
     // Here you would fetch from your database with pagination
@@ -283,7 +288,7 @@ app.get('/api/journal/entries', authenticateToken, async (req, res) => {
 app.post('/api/sessions', authenticateToken, async (req, res) => {
   try {
     const { script, voiceId, sessionType, customScript } = req.body;
-    const { userId } = req.user;
+    const userId = req.user.id;
 
     if (!voiceId) {
       return res.status(400).json({ error: 'Voice ID is required' });
@@ -316,7 +321,7 @@ app.post('/api/sessions', authenticateToken, async (req, res) => {
 
 app.get('/api/sessions', authenticateToken, async (req, res) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user.id;
     const { page = 1, limit = 10 } = req.query;
 
     // Here you would fetch from your database
@@ -362,7 +367,7 @@ app.use((error, req, res, next) => {
 });
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use('/*', (req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
