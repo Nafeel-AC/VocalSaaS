@@ -67,32 +67,31 @@ Additionally, the app includes:
 
 * **Framework**: FastAPI (Python), served by Uvicorn/Gunicorn
 * **Voice Synthesis**: `requests` to [ElevenLabs API](https://api.elevenlabs.io)
-* **Data & Storage**: [Firebase](https://firebase.google.com/) (optional with Python Admin SDK) or direct cloud storage
+* **Data & Storage**: [Supabase](https://supabase.com/) (PostgreSQL + realtime + auth + storage)
 
-  * **Firestore** → journaling entries, session metadata
+  * **Database** → journaling entries, session metadata (PostgreSQL)
   * **Storage** → raw recordings, generated audio
-  * **Auth** → Firebase Auth (ID tokens verified server-side)
+  * **Auth** → Supabase Auth (JWT tokens verified server-side)
+  * **Realtime** → live updates for collaborative features
 
 ### Security
 
 * **Encryption in transit**: HTTPS/TLS
-* **Encryption at rest**: Firebase-managed encryption (if used)
-* **Authentication**: Firebase Auth on the client; server verifies tokens
+* **Encryption at rest**: Supabase-managed encryption (PostgreSQL + storage)
+* **Authentication**: Supabase Auth on the client; server verifies JWT tokens
 * **Environment Variables**:
 
   Frontend (Next.js):
 
-  * `NEXT_PUBLIC_FIREBASE_API_KEY`
-  * `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-  * `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-  * `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-  * `NEXT_PUBLIC_FIREBASE_APP_ID`
+  * `NEXT_PUBLIC_SUPABASE_URL`
+  * `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  * `NEXT_PUBLIC_API_BASE_URL`
 
   Backend (FastAPI):
 
   * `ELEVENLABS_API_KEY`
-  * `FIREBASE_PROJECT_ID`
-  * `GOOGLE_APPLICATION_CREDENTIALS` (path to service account JSON if using Admin SDK)
+  * `SUPABASE_URL`
+  * `SUPABASE_SERVICE_ROLE_KEY`
 
 ---
 
@@ -106,7 +105,7 @@ Additionally, the app includes:
     ScriptInput.tsx
     JournalEntry.tsx
   /lib
-    firebase.ts          # Firebase web SDK init
+    supabase.ts          # Supabase client init
   /styles
   next.config.js
   package.json
@@ -121,8 +120,8 @@ Additionally, the app includes:
       auth.py            # auth helpers (token verification)
     services/
       elevenlabs.py
-      firestore.py       # optional: Firestore helpers
-      storage.py         # optional: Storage helpers
+      supabase.py        # Supabase client & helpers
+      storage.py         # Supabase storage helpers
     models/
       schemas.py         # Pydantic models
   requirements.txt
@@ -167,11 +166,8 @@ pip install -r requirements.txt
 Frontend (create `frontend/.env.local`):
 
 ```
-NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
 
@@ -179,8 +175,8 @@ Backend (create `backend/.env` or set system vars):
 
 ```
 ELEVENLABS_API_KEY=your_api_key_here
-FIREBASE_PROJECT_ID=your_project_id
-GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
 ### 4. Run App (Dev Mode)
@@ -200,22 +196,23 @@ cd frontend
 npm run dev
 ```
 
-### 5. Deploy Firebase
+### 5. Deploy Supabase
 
-* Setup Firestore rules for journaling entries.
-* Setup Storage rules for user recordings.
-* Enable Firebase Authentication (email/password first).
+* Setup PostgreSQL tables for journaling entries and session metadata.
+* Setup Storage buckets for user recordings and generated audio.
+* Enable Supabase Authentication (email/password first).
+* Configure Row Level Security (RLS) policies for data access control.
 
 ---
 
 ## 📖 Documentation
 
-* [DEPLOYMENT.md](docs/DEPLOYMENT.md): Firebase setup, Firestore rules, hosting instructions.
-* [API.md](docs/API.md): ElevenLabs integration & Firebase SDK usage.
+* [DEPLOYMENT.md](docs/DEPLOYMENT.md): Supabase setup, PostgreSQL schema, RLS policies, hosting instructions.
+* [API.md](docs/API.md): ElevenLabs integration & Supabase SDK usage.
 * [SECURITY.md](docs/SECURITY.md): Data encryption, GDPR compliance, account deletion process.
 
 ---
 
-✅ Now this README is aligned to a **Next.js frontend + FastAPI backend** architecture with Firebase as an optional data layer.
+✅ Now this README is aligned to a **Next.js frontend + FastAPI backend** architecture with Supabase as the data layer.
 
-Do you want me to also **draft the FastAPI routes and stub the Next.js pages**, and/or the **Firestore & Storage security rules** so users only access their own data?
+Do you want me to also **draft the FastAPI routes and stub the Next.js pages**, and/or the **Supabase PostgreSQL schema and RLS policies** so users only access their own data?

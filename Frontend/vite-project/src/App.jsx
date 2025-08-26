@@ -1,34 +1,68 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import React, { useState, useEffect } from 'react'
+import SignUp from './components/SignUp'
+import SignInForm from './components/signin'
+import Dashboard from './components/Dashboard'
+import { supabase } from './lib/supabaseClient'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [showSignUp, setShowSignUp] = useState(false)
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
+  useEffect(() => {
+    // Get initial session
+    const getSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        setUser(session?.user || null)
+      } catch (error) {
+        console.error('Error getting session:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    getSession()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        setUser(session?.user)
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const toggleForm = () => {
+    setShowSignUp(!showSignUp)
+  }
+
+  if (loading) {
+    return (
+      <div className="App">
+        <div className="loading">Loading...</div>
+      </div>
+    )
+  }
+
+  // If user is authenticated, show dashboard
+  if (user) {
+    return <Dashboard />
+  }
+
+  // If no user, show auth forms
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div className="App">
+      {showSignUp ? (
+        <SignUp onToggleForm={toggleForm} />
+      ) : (
+        <SignInForm onToggleForm={toggleForm} />
+      )}
+    </div>
   )
 }
 
